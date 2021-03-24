@@ -33,6 +33,9 @@ knitr::opts_chunk$set(echo = TRUE)
 data <- read_csv("level-5.csv")
 
 # Take out the metadata at the end of the table
+
+#Use the library(flipPlots), using the SankeyDiagram() function.
+
 data <- data %>% 
   select( -"Sample_Date",-"Substrate",-"Weeks",-"Sample_Code",
           -"Submerged",-"Floating",-"Water",-"Vegetation",
@@ -73,9 +76,27 @@ t <-data
 
 t <- t %>% separate(otu, c("d", "p", "c", "o", "f"), ";")
 
-t %>% select(f) %>% group_by(f) %>%  summarise(count=n())
+t %>% select(p) %>% group_by(p) %>%  summarise(count=n())
 
 ```
 
 # Take off prefixes
+```{r}
+t %>% 
+  select(index, d, p, count) %>% 
+  filter(p != "__") %>% 
+  filter(d != "__") %>% 
+  drop_na() %>% 
+  mutate(domain = str_sub(d,4),
+         phylum = str_sub(p,4)) %>% 
+  group_by(domain, phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  select(index, domain, phylum, count) %>% 
+  distinct()
+  
+  View(t)
+  
+  
 
+
+             
