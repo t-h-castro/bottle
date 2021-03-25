@@ -94,7 +94,7 @@ t %>%
   select(index, domain, phylum, count) %>% 
   distinct()
   
-  View(t)
+ 
   
   
 
