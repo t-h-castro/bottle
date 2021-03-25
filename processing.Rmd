@@ -28,14 +28,16 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Load Level 5 csv file
 
-```{r}
+```{r message=FALSE}
 
 data <- read_csv("level-5.csv")
 
+```
+
+Take out the metadata on the far right
+```{r}
+
 # Take out the metadata at the end of the table
-
-#Use the library(flipPlots), using the SankeyDiagram() function.
-
 data <- data %>% 
   select( -"Sample_Date",-"Substrate",-"Weeks",-"Sample_Code",
           -"Submerged",-"Floating",-"Water",-"Vegetation",
@@ -58,17 +60,6 @@ data <- data %>%
 
 
 
-25 Top counts
-
-```{r}
-
-data %>% 
-  arrange(desc(count)) %>% 
-  print(n=25)
-
-```
-
-
 # Split into five columns
 ```{r}
 
@@ -76,27 +67,177 @@ t <-data
 
 t <- t %>% separate(otu, c("d", "p", "c", "o", "f"), ";")
 
-t %>% select(p) %>% group_by(p) %>%  summarise(count=n())
+# t %>% select(p) %>% group_by(p) %>%  summarise(count=n())
 
 ```
 
 # Take off prefixes
+
 ```{r}
-t %>% 
+
+t <- t %>% 
   select(index, d, p, count) %>% 
   filter(p != "__") %>% 
   filter(d != "__") %>% 
   drop_na() %>% 
   mutate(domain = str_sub(d,4),
          phylum = str_sub(p,4)) %>% 
-  group_by(domain, phylum) %>% 
+  select(index, domain, phylum, count)
+
+```
+
+Sum by index and phylum.
+
+```{r}
+
+t <- t %>% 
+  group_by(index, phylum) %>% 
   mutate(count = sum(count)) %>% 
-  select(index, domain, phylum, count) %>% 
   distinct()
-  
-  View(t)
-  
-  
+
+```
 
 
-             
+```{r}
+
+t %>% 
+  arrange(desc(count)) %>% 
+  head(25)
+
+```
+
+```{r}
+
+t <- t %>% 
+  separate(index, c("sample_date", "sample_id"), "-")
+
+t
+
+```
+
+
+filter out the four we want
+
+```{r}
+
+t <- t %>% 
+  filter(sample_id %in% c("T06", "T07", "B16", "B17" )) 
+
+t
+
+```
+
+Test to see it work with just one sample_id
+
+```{r}
+
+T06 <- t %>% 
+  filter(sample_id == "T06") %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(desc(count)) %>% 
+  head(10)
+
+T07 <- t %>% 
+  filter(sample_id == "T07") %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(desc(count)) %>% 
+  head(10)
+
+B16 <- t %>% 
+  filter(sample_id == "B16") %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(desc(count)) %>% 
+  head(10)
+
+B17 <- t %>% 
+  filter(sample_id == "B17") %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(desc(count)) %>% 
+  head(10)
+
+```
+
+
+Combine into one tibble
+
+```{r}
+
+bottle <- bind_rows(T06, T07, B16, B17)
+
+bottle
+
+```
+
+
+Maybe another way to approach this:
+
+Take the top 10 phylum across all four samples, make a list of them, and then pull the ACTUAL numbers of those ten for all four samples.
+
+```{r}
+
+p_list <- t %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  arrange(desc(count)) %>% 
+  select(phylum) %>% 
+  mutate(phylum = as.factor(phylum)) %>% 
+  distinct() %>% 
+  head(10)
+
+p_list
+
+```
+
+Now, pull only the ones on this list as our dataset:
+
+```{r}
+
+bottle <- p_list %>% 
+  inner_join(y=t) %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(sample_id,phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(sample_id) %>% 
+  print(n=Inf)
+```
+
+
+Make the horizontal plot
+
+```{r}
+
+bottle %>% 
+  ggplot( aes(x=sample_id,
+              y=count,
+              fill = phylum) ) +
+  geom_bar(position = "fill", 
+           stat="identity") +
+  theme_ipsum_ps() + 
+  coord_flip()
+
+```
+
+
+
+Make it wide for the chi-square/anova
+
+```{r}
+
+bottle %>% 
+  pivot_wider(names_from = sample_id, values_from = count)
+
+```
+
