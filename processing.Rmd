@@ -17,6 +17,7 @@ header-includes:
 
 library(tidyverse)
 library(inspectdf)
+library(tidymodels)
 library(hrbrthemes)
 
 ```
@@ -100,14 +101,6 @@ t <- t %>%
 
 ```{r}
 
-t %>% 
-  arrange(desc(count)) %>% 
-  head(25)
-
-```
-
-```{r}
-
 t <- t %>% 
   separate(index, c("sample_date", "sample_id"), "-")
 
@@ -120,18 +113,50 @@ filter out the four we want
 
 ```{r}
 
-t <- t %>% 
+bottle <- t %>% 
   filter(sample_id %in% c("T06", "T07", "B16", "B17" )) 
 
-t
+```
+
+Make a list of the top 10 across these four
+
+```{r}
+
+p_list <- t %>% 
+  group_by(phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  arrange(desc(count)) %>% 
+  select(phylum) %>% 
+  mutate(phylum = as.factor(phylum)) %>% 
+  distinct() %>% 
+  head(10)
+
+p_list
 
 ```
+
+Filter for just the ones on this list
+
+```{r}
+
+bottle <- p_list %>% 
+  inner_join(y=t) %>% 
+  select(sample_id, phylum, count) %>% 
+  group_by(sample_id,phylum) %>% 
+  mutate(count = sum(count)) %>% 
+  distinct() %>% 
+  arrange(sample_id) %>% 
+  print(n=Inf)
+
+
+```
+
 
 Test to see it work with just one sample_id
 
 ```{r}
 
-T06 <- t %>% 
+T06 <- bottle %>% 
   filter(sample_id == "T06") %>% 
   select(sample_id, phylum, count) %>% 
   group_by(phylum) %>% 
@@ -140,7 +165,7 @@ T06 <- t %>%
   arrange(desc(count)) %>% 
   head(10)
 
-T07 <- t %>% 
+T07 <- bottle %>% 
   filter(sample_id == "T07") %>% 
   select(sample_id, phylum, count) %>% 
   group_by(phylum) %>% 
@@ -149,7 +174,7 @@ T07 <- t %>%
   arrange(desc(count)) %>% 
   head(10)
 
-B16 <- t %>% 
+B16 <- bottle %>% 
   filter(sample_id == "B16") %>% 
   select(sample_id, phylum, count) %>% 
   group_by(phylum) %>% 
@@ -158,7 +183,7 @@ B16 <- t %>%
   arrange(desc(count)) %>% 
   head(10)
 
-B17 <- t %>% 
+B17 <- bottle %>% 
   filter(sample_id == "B17") %>% 
   select(sample_id, phylum, count) %>% 
   group_by(phylum) %>% 
@@ -181,40 +206,6 @@ bottle
 ```
 
 
-Maybe another way to approach this:
-
-Take the top 10 phylum across all four samples, make a list of them, and then pull the ACTUAL numbers of those ten for all four samples.
-
-```{r}
-
-p_list <- t %>% 
-  group_by(phylum) %>% 
-  mutate(count = sum(count)) %>% 
-  arrange(desc(count)) %>% 
-  select(phylum) %>% 
-  mutate(phylum = as.factor(phylum)) %>% 
-  distinct() %>% 
-  head(10)
-
-p_list
-
-```
-
-Now, pull only the ones on this list as our dataset:
-
-```{r}
-
-bottle <- p_list %>% 
-  inner_join(y=t) %>% 
-  select(sample_id, phylum, count) %>% 
-  group_by(sample_id,phylum) %>% 
-  mutate(count = sum(count)) %>% 
-  distinct() %>% 
-  arrange(sample_id) %>% 
-  print(n=Inf)
-```
-
-
 Make the horizontal plot
 
 ```{r}
@@ -232,12 +223,22 @@ bottle %>%
 
 
 
-Make it wide for the chi-square/anova
+Make the matrix
 
 ```{r}
 
-bottle %>% 
-  pivot_wider(names_from = sample_id, values_from = count)
+cs_bottle <- as.matrix( bottle %>% 
+  pivot_wider(names_from = sample_id, values_from = count) )
+
+```
+
+
+Chi-square
+
+```{r}
+
+
+chisq.test(cs_bottle)
 
 ```
 
