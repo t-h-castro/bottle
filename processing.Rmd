@@ -227,8 +227,13 @@ Make the matrix
 
 ```{r}
 
-cs_bottle <- as.matrix( bottle %>% 
-  pivot_wider(names_from = sample_id, values_from = count) )
+#proportions
+xt_bottle <- bottle %>% 
+  group_by(sample_id) %>% 
+  mutate(prop = count / sum(count)) %>% 
+  select(-count)
+
+tab <- xtabs(~sample_id + phylum, data = xt_bottle) # as a cross table
 
 ```
 
@@ -238,7 +243,10 @@ Chi-square
 ```{r}
 
 
-chisq.test(cs_bottle)
+
+
+# expected
+prop.table(tab, margin = 1) #by row
 
 ```
 
